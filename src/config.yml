@@ -1,0 +1,6 @@
+default:
+  amazon_server: !expr keyring::key_get('redshift','host')
+  amazon_db: ohio
+  amazon_db_port: 5439
+  redshift_username: !expr keyring::key_get("redshift","username")
+  redshift_password: !expr keyring::key_get("redshift","password")
