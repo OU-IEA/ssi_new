@@ -14,7 +14,8 @@ basis_registration <- dbGetQuery(con, readr::read_file('SQL/course_compl/product
 
 ssi_totals <-
   basis_registration |> distinct(ssi_payout_y1, newid, ssi_y1_payout_total_amount) |>
-  arrange(ssi_payout_y1, newid)
+  arrange(ssi_payout_y1, newid) |> 
+  rename(fiscal_year = ssi_payout_y1)
 
 # Student Totals --------------------------------------------------------------
 
@@ -50,6 +51,9 @@ for(year in unique(year_matrix$FY)){
   
   # retrieving years and calculating total degrees for a given cohort
   subset_years <- year_matrix$AY[year_matrix$FY == year]
+  year_basis <- unique(year_matrix$year_basis[year_matrix$FY == year])
+  
+  
   
   temp  <- course_data |> 
      filter(time_academic_yr %in% subset_years) |> 
