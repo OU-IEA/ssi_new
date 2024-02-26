@@ -8,34 +8,58 @@ library(readr)
 source('src/helpers.R')
 
 
-con <- connect('redshift')
+# Prep -------------------------------------------------------------------------
 
-basis_registration <- dbGetQuery(con, readr::read_file('SQL/course_compl/production_script.sql'))
+# setting up necessary stuff for calculations
+
+con <- connect('redshift')
+basis_registration <- dbGetQuery(con, 
+                                 readr::read_file('SQL/course_compl/production_script.sql'))
 
 ssi_totals <-
-  basis_registration |> distinct(ssi_payout_y1, newid, ssi_y1_payout_total_amount) |>
+  basis_registration |> 
+  distinct(ssi_payout_y1, newid, ssi_y1_payout_total_amount) |>
   arrange(ssi_payout_y1, newid) |> 
   rename(fiscal_year = ssi_payout_y1)
-
-# Student Totals --------------------------------------------------------------
-
-
-# let's calculate total number of students per matchid
 
 
 # the year matrix is set up until 2035; this will create some unnecessary
 # loops (see below) between now and 2035 but you won't have to update it each year;
-# more years will have to be added as we get closer to 2035 (2035 - 3 = 2032);
+# more years will have to be added as we get closer to 2035
 
 # IMPORTANT: the status however will need to be updated manually each year.
 
 year_matrix <- read_csv('misc/year_matrix.csv', show_col_types = FALSE)
 year_matrix <- pivot_longer(year_matrix, AY_1:AY_3, values_to = "AY")
 
-course_data <- basis_registration |>
-  group_by(time_academic_yr, newid, class_course, credit_hours) |>
-  summarise(n_students_per_class = n()) |>
-  mutate(total_credit_hr_per_class = n_students_per_class * credit_hours)
+
+# Algorithm --------------------------------------------------------------
+
+# the entire process can be run in one single step but we'll break it in two 
+# for more explicit control and data checks. We will run two loops.
+
+
+## Step1  - Pre-aggregation -----------------------------------------------------
+
+
+# let's calculate total number of students and credits per matchid in a given year
+# for both cases: academic(fiscal) or calendar
+
+year_loop_one <- year_matrix |> distinct(AY,year_basis)
+
+
+for(year in year_loop_one$AY){
+  
+  year_basis <- year_loop_one$year_basis[year_matrix$AY == year]
+  print(year_basis)
+    
+  # course_data <- basis_registration |>
+  # group_by(time_academic_yr, newid, class_course, credit_hours) |>
+  # summarise(n_students_per_class = n()) |>
+  # mutate(total_credit_hr_per_class = n_students_per_class * credit_hours)
+  
+}
+
 
 
 
