@@ -74,7 +74,4 @@ data_final/*
 # Built Visual Studio Code Extensions
 *.vsix
 spreadsheets/ssi_doctoral_subsidy.csv
-*.csv
-*.csv
-*.csv
 spreadsheets/2024/to_upload/doctoral.csv

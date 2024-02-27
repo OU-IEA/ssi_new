@@ -135,3 +135,37 @@ upload_to_redshift <- function(file_path, schema, table_name, truncate = FALSE){
 #                    schema = 'iss_pvlad',
 #                    table_name = 'covid19_cvs_tests_csv',
 #                    truncate = TRUE)
+
+
+aggregate_by_year_type <- function(aggr_types, years_to_aggr ,df){
+  
+  res <- map(aggr_types, function(x) {
+    
+    years <- years_to_aggr |> filter(year_basis == x) |>
+      distinct(AY) |>
+      pull(AY)
+    
+    if (x == 'fiscal') {
+      df |>
+        filter(time_academic_yr %in% years) |> 
+        group_by(time_academic_yr, newid, class_course, credit_hours) |>
+        summarise(n_students_per_class = n()) |>
+        mutate(total_credit_hr_per_class = n_students_per_class * credit_hours,
+               aggr_basis = 'fiscal') |> 
+        rename(year =  time_academic_yr)
+      
+    } else {
+      
+      df |>
+        filter(calendar_year %in% years) |> 
+        group_by(calendar_year, newid, class_course, credit_hours) |>
+        summarise(n_students_per_class = n()) |>
+        mutate(total_credit_hr_per_class = n_students_per_class * credit_hours,
+               aggr_basis = 'calendar') |> 
+        rename(year =  calendar_year)
+      
+    }})
+  
+  bind_rows(res)
+  
+}

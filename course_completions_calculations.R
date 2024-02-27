@@ -36,36 +36,24 @@ year_matrix <- pivot_longer(year_matrix, AY_1:AY_3, values_to = "AY")
 # Algorithm --------------------------------------------------------------
 
 # the entire process can be run in one single step but we'll break it in two 
-# for more explicit control and data checks. We will run two loops.
+# for more explicit control and data checks. 
 
 
 ## Step1  - Pre-aggregation -----------------------------------------------------
 
 
 # let's calculate total number of students and credits per matchid in a given year
-# for both cases: academic(fiscal) or calendar
 
-year_loop_one <- year_matrix |> distinct(AY,year_basis)
-
-
-for(year in year_loop_one$AY){
-  
-  year_basis <- year_loop_one$year_basis[year_matrix$AY == year]
-  print(year_basis)
-    
-  # course_data <- basis_registration |>
-  # group_by(time_academic_yr, newid, class_course, credit_hours) |>
-  # summarise(n_students_per_class = n()) |>
-  # mutate(total_credit_hr_per_class = n_students_per_class * credit_hours)
-  
-}
+course_data <- aggregate_by_year_type(aggr_types = c('fiscal', 'calendar'),
+                                      years_to_aggr = year_matrix,
+                                      df = basis_registration)
 
 
+# Step2 - Re-allocation --------------------------------------------------------
 
 
 # setting up the loop
 index <- 0
-datalist = list()
 datalist = vector("list", length = length(unique(year_matrix$FY))) 
 
 # actual calculations
@@ -75,6 +63,7 @@ for(year in unique(year_matrix$FY)){
   
   # retrieving years and calculating total degrees for a given cohort
   subset_years <- year_matrix$AY[year_matrix$FY == year]
+  
   year_basis <- unique(year_matrix$year_basis[year_matrix$FY == year])
   
   
