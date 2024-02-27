@@ -169,3 +169,60 @@ aggregate_by_year_type <- function(aggr_types, years_to_aggr ,df){
   bind_rows(res)
   
 }
+
+
+
+aggregate_cohort <- function(years_to_aggr, df){
+  
+  res <- map(unique(years_to_aggr$FY), function(x) {
+    
+    subset_years <- year_matrix$AY[year_matrix$FY == x]
+    year_type <- unique(year_matrix$year_basis[year_matrix$FY == x])
+    completion_status <- unique(year_matrix$status[year_matrix$FY == x]) 
+    
+    
+    if (year_type == 'fiscal') {
+      
+      temp <- df |>
+        filter(year %in% subset_years,aggr_basis == 'fiscal') |>
+        group_by(newid, class_course) |>
+        summarise(cumul_total_cr_hours = sum(total_credit_hr_per_class), .groups = 'drop') 
+      
+      temp |> group_by(newid) |>
+        mutate(grand_total_cr_hours = sum(cumul_total_cr_hours),
+               credit_hours_weight  = cumul_total_cr_hours /grand_total_cr_hours,
+               fiscal_year = x,
+               years_included = paste(subset_years,collapse = ','),
+               aggr_type = 'fiscal',
+               compl_status = completion_status) 
+      
+    } else {
+      
+      temp <- df |>
+        filter(year %in% subset_years,aggr_basis == 'calendar') |>
+        group_by(newid, class_course) |>
+        summarise(cumul_total_cr_hours = sum(total_credit_hr_per_class), .groups = 'drop') 
+      
+      temp |> group_by(newid) |>
+        mutate(grand_total_cr_hours = sum(cumul_total_cr_hours),
+               credit_hours_weight  = cumul_total_cr_hours /grand_total_cr_hours,
+               fiscal_year = x,
+               years_included = paste(subset_years,collapse = ','),
+               aggr_type = 'calendar',
+               compl_status = completion_status) 
+      
+    }
+  })
+  
+  datalist <- map(res, function(x) {
+    if (!nrow(x) == 0) {
+      x
+    }
+  })
+  
+  
+  compact(datalist)
+  
+}
+
+

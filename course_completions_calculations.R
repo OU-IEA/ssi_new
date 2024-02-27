@@ -35,66 +35,26 @@ year_matrix <- pivot_longer(year_matrix, AY_1:AY_3, values_to = "AY")
 
 # Algorithm --------------------------------------------------------------
 
-# the entire process can be run in one single step but we'll break it in two 
-# for more explicit control and data checks. 
+# the entire process can be run in one single step but given the complexity, 
+# we'll break it into multiple steps for more explicit control and data checks at any given step. 
 
 
-## Step1  - Pre-aggregation -----------------------------------------------------
-
-
-# let's calculate total number of students and credits per matchid in a given year
+# first, let's calculate total number of students and credits per newid in a given year
 
 course_data <- aggregate_by_year_type(aggr_types = c('fiscal', 'calendar'),
                                       years_to_aggr = year_matrix,
                                       df = basis_registration)
 
+# Next, let's aggregate data based on three year cohort; the year basis - fiscal or calendar
+# will be taken in consideration as well as actual contributing years.
+# This function will produce different metrics that will be used to allocate SSI dollars.
 
-# Step2 - Re-allocation --------------------------------------------------------
+
+results <- aggregate_cohort(year_matrix,course_data)  
 
 
-# setting up the loop
-index <- 0
-datalist = vector("list", length = length(unique(year_matrix$FY))) 
 
-# actual calculations
-for(year in unique(year_matrix$FY)){
-  index <- index +1
-  year <- as.numeric(year)
-  
-  # retrieving years and calculating total degrees for a given cohort
-  subset_years <- year_matrix$AY[year_matrix$FY == year]
-  
-  year_basis <- unique(year_matrix$year_basis[year_matrix$FY == year])
-  
-  
-  
-  temp  <- course_data |> 
-     filter(time_academic_yr %in% subset_years) |> 
-     group_by(newid,class_course) |> 
-     summarise(cumul_total_cr_hours = sum(total_credit_hr_per_class), .groups = 'drop')
-  
-
-  temp <- temp |>
-     group_by(newid) |>
-     mutate(grand_total_cr_hours = sum(cumul_total_cr_hours),
-            credit_hours_weight  = cumul_total_cr_hours /grand_total_cr_hours,
-            fiscal_year = year) 
-  
-
-  datalist[[index]] <- temp
-
-}
-
-# Let's remove empty tables
-  datalist <- map(datalist, function(x) {
-    if (!nrow(x) == 0) {
-      x
-    }
-  })
-  
-  datalist <- compact(datalist)
-  results <- bind_rows(datalist)
-
+  ####
   
 final_calcs <- results |> left_join(ssi_totals, by = c('newid' = 'newid','fiscal_year' = 'ssi_payout_y1')) |>
    ungroup() |> 
