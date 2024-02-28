@@ -14,16 +14,12 @@ source('src/helpers.R')
 
 con <- connect('redshift')
 basis_registration <- dbGetQuery(con, 
-                                 readr::read_file('SQL/course_compl/production_script.sql'))
+                                 read_file('SQL/course_compl/course_compl.sql'))
 
-ssi_totals <-
-  basis_registration |> 
-  distinct(ssi_payout_y1, newid, ssi_y1_payout_total_amount) |>
-  arrange(ssi_payout_y1, newid) |> 
-  rename(fiscal_year = ssi_payout_y1)
+ssi_totals <- dbGetQuery(con,
+                         read_file('SQL/course_compl/course_compl_ssi_totals.sql'))
 
-
-# the year matrix is set up until 2035; this will create some unnecessary
+# the year matrix below is set up until 2035; this will create some unnecessary
 # loops (see below) between now and 2035 but you won't have to update it each year;
 # more years will have to be added as we get closer to 2035
 
@@ -39,19 +35,24 @@ year_matrix <- pivot_longer(year_matrix, AY_1:AY_3, values_to = "AY")
 # we'll break it into multiple steps for more explicit control and data checks at any given step. 
 
 
-# first, let's calculate total number of students and credits per newid in a given year
+# first, let's pre-aggregate data by calculating total number of students and credits per newid in a given year
 
 course_data <- aggregate_by_year_type(aggr_types = c('fiscal', 'calendar'),
                                       years_to_aggr = year_matrix,
                                       df = basis_registration)
 
-# Next, let's aggregate data based on three year cohort; the year basis - fiscal or calendar
-# will be taken in consideration as well as actual contributing years.
-# This function will produce different metrics that will be used to allocate SSI dollars.
+# the function below does most of heavy lifting: it aggregates data 
+# based on three year cohort; the year basis - fiscal or calendar is
+# taken in consideration as well as actual contributing years for each fiscal year;
+# the function produces different metrics that will be used to allocate SSI dollars.
 
 
-results <- aggregate_cohort(year_matrix,course_data)  
+results <- aggregate_cohort(years_to_aggr = year_matrix,
+                            df = course_data)  
 
+# let's bring SSI and re-allocate amounts
+
+final_calcs <- ssi_allocate(df = results,ssi_df = ssi_totals)
 
 
   ####

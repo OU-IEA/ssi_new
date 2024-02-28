@@ -185,7 +185,7 @@ aggregate_cohort <- function(years_to_aggr, df){
       
       temp <- df |>
         filter(year %in% subset_years,aggr_basis == 'fiscal') |>
-        group_by(newid, class_course) |>
+        group_by(year,newid,class_course) |>
         summarise(cumul_total_cr_hours = sum(total_credit_hr_per_class), .groups = 'drop') 
       
       temp |> group_by(newid) |>
@@ -194,13 +194,15 @@ aggregate_cohort <- function(years_to_aggr, df){
                fiscal_year = x,
                years_included = paste(subset_years,collapse = ','),
                aggr_type = 'fiscal',
-               compl_status = completion_status) 
+               compl_status = completion_status) |> 
+        rename(acad_year = year) |> 
+        relocate(acad_year,.after = fiscal_year)
       
     } else {
       
       temp <- df |>
         filter(year %in% subset_years,aggr_basis == 'calendar') |>
-        group_by(newid, class_course) |>
+        group_by(year, newid, class_course) |>
         summarise(cumul_total_cr_hours = sum(total_credit_hr_per_class), .groups = 'drop') 
       
       temp |> group_by(newid) |>
@@ -209,7 +211,9 @@ aggregate_cohort <- function(years_to_aggr, df){
                fiscal_year = x,
                years_included = paste(subset_years,collapse = ','),
                aggr_type = 'calendar',
-               compl_status = completion_status) 
+               compl_status = completion_status) |> 
+        rename(acad_year = year) |> 
+        relocate(acad_year,.after = fiscal_year)
       
     }
   })
@@ -225,4 +229,30 @@ aggregate_cohort <- function(years_to_aggr, df){
   
 }
 
+
+ssi_allocate <- function(df, ssi_df){
+  
+  temp <- map(df,function(x){
+    
+    temp <- x |> inner_join(ssi_df,
+                            by = c('newid' = 'newid',
+                                   'fiscal_year' = 'fiscal_year_ssi_recognized'))
+    
+    temp |> ungroup() |>
+      mutate(ssi_per_course_per_cr_hours = ssi_total_amount * credit_hours_weight/cumul_total_cr_hours) 
+    
+  }
+  )
+  
+  datalist <- map(temp, function(x) {
+    if (!nrow(x) == 0) {
+      x
+    }
+  })
+  
+  
+  compact(datalist)
+  
+  
+}
 
