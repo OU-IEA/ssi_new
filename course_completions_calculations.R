@@ -52,18 +52,17 @@ results <- aggregate_cohort(years_to_aggr = year_matrix,
 
 # let's bring SSI and re-allocate amounts
 
-final_calcs <- ssi_allocate(df = results,ssi_df = ssi_totals)
+final_calcs <- ssi_allocate(df = results,ssi_df = ssi_totals) |> 
+              bind_rows()  
 
 
-  ####
-  
-final_calcs <- results |> left_join(ssi_totals, by = c('newid' = 'newid','fiscal_year' = 'ssi_payout_y1')) |>
-   ungroup() |> 
-   mutate(ssi_per_course_per_cr_hours = ssi_y1_payout_total_amount * credit_hours_weight/cumul_total_cr_hours) |> 
-  select(newid,class_course,fiscal_year,ssi_per_course_per_cr_hours)
+## Gathering & recalculating --------------------------------------------------------------
+
+payout_matrix <- read_csv('misc/payout_matrix.csv',show_col_types = FALSE)
+basis_registration <- basis_registration |>
+  add_payout_matrix(payout_df = payout_matrix)
 
 
-# Gathering & recalculating --------------------------------------------------------------
 
 temp_1 <- basis_registration |> select(- ssi_y1_payout_total_amount) |> 
   left_join(final_calcs, by = c('newid' = 'newid', 'ssi_payout_y1' = 'fiscal_year', 'class_course' = 'class_course')) |> 

@@ -256,3 +256,10 @@ ssi_allocate <- function(df, ssi_df){
   
 }
 
+
+add_payout_matrix <- function(source_df, payout_df){
+  # 
+  temp <- source_df |> inner_join(payout_df, by=c('time_academic_yr' = 'year'))
+  temp |> select(-c('gap', 'year_basis'))
+}
+
