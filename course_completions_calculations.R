@@ -56,6 +56,23 @@ final_calcs <- ssi_allocate(df = results,ssi_df = ssi_totals) |>
               bind_rows()  
 
 
+temp <- final_calcs |> 
+  group_by(newid, class_course,acad_year) |> 
+  summarise(total_ssi = sum(ssi_per_course_per_cr_hours)) |> 
+  mutate(adj_total_ssi = ifelse(acad_year %in% c(2018,2019, 2020), total_ssi * 3/4, total_ssi)) |> 
+  select(-total_ssi)
+
+
+final_ssi_courses |> 
+  group_by(time_academic_yr) |> 
+  summarise(total_amount = sum(ssi_total_all_three_years_combined, na.rm = TRUE))
+
+ssi_totals |> 
+  group_by(fiscal_year_ssi_recognized) |> 
+  summarise(sum(ssi_total_amount))
+
+
+
 ## Gathering & recalculating --------------------------------------------------------------
 
 payout_matrix <- read_csv('misc/payout_matrix.csv',show_col_types = FALSE)
@@ -64,18 +81,18 @@ basis_registration <- basis_registration |>
 
 
 
-temp_1 <- basis_registration |> select(- ssi_y1_payout_total_amount) |> 
-  left_join(final_calcs, by = c('newid' = 'newid', 'ssi_payout_y1' = 'fiscal_year', 'class_course' = 'class_course')) |> 
-  rename(ssi_y1_payout_per_cr_hour = ssi_per_course_per_cr_hours)
+temp_1 <- basis_registration |> 
+  left_join(temp, by = c('newid' = 'newid', 'ssi_payout_y1' = 'acad_year', 'class_course' = 'class_course')) |> 
+  rename(ssi_y1_payout_total_ssi = adj_total_ssi)
 
 temp_1 <- temp_1 |> 
-  left_join(final_calcs, by = c('newid' = 'newid', 'ssi_payout_y2' = 'fiscal_year', 'class_course' = 'class_course')) |> 
-  rename(ssi_y2_payout_per_cr_hour = ssi_per_course_per_cr_hours)
+  left_join(temp, by = c('newid' = 'newid', 'ssi_payout_y2' = 'acad_year', 'class_course' = 'class_course')) |> 
+  rename(ssi_y2_payout_total_ssi = adj_total_ssi)
 
 
 temp_1 <- temp_1 |> 
-  left_join(final_calcs, by = c('newid' = 'newid', 'ssi_payout_y3' = 'fiscal_year', 'class_course' = 'class_course')) |> 
-  rename(ssi_y3_payout_per_cr_hour = ssi_per_course_per_cr_hours)
+  left_join(temp, by = c('newid' = 'newid', 'ssi_payout_y3' = 'acad_year', 'class_course' = 'class_course')) |> 
+  rename(ssi_y3_payout_total_ssi = adj_total_ssi)
 
 
 # completeness flag
@@ -116,24 +133,16 @@ final_ssi_courses$complete_flag[is.na(final_ssi_courses$ssi_y3_payout_per_cr_hou
 
 
 final_ssi_courses <- final_ssi_courses |> 
-  mutate(
-    ssi_y1_payout_total_ssi = credit_hours * ssi_y1_payout_per_cr_hour,
-    ssi_y2_payout_total_ssi = credit_hours * ssi_y2_payout_per_cr_hour,
-    ssi_y3_payout_total_ssi = credit_hours * ssi_y3_payout_per_cr_hour
-    
-  ) 
-
-final_ssi_courses <- final_ssi_courses |> 
-  select(-inst_code) |> 
+#  select(-inst_code) |> 
   relocate(time_academic_yr,.before = ssi_payout_y1)
 
 final_ssi_courses <- final_ssi_courses |> 
-  mutate(ssi_total_all_three_years_combined = credit_hours *(ssi_y1_payout_per_cr_hour + ssi_y2_payout_per_cr_hour + ssi_y3_payout_per_cr_hour)) |> 
-  relocate(complete_flag, .after = ssi_total_all_three_years_combined) |> 
-  relocate(ssi_total_all_three_years_combined,.before = complete_flag) |> 
-  select(-c(new_class_number,campus_id,class_grade,
-            ssi_y1_payout_per_cr_hour,ssi_y2_payout_per_cr_hour,ssi_y3_payout_per_cr_hour))
-
+  rowwise() |> 
+  mutate(ssi_total_all_three_years_combined = sum(ssi_y1_payout_total_ssi,
+                                                  ssi_y2_payout_total_ssi,
+                                                  ssi_y3_payout_total_ssi,
+                                                  na.rm=TRUE)) 
+  
 
 # Export ---------------------------------------------------------------------
 
